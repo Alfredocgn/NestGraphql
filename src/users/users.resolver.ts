@@ -8,21 +8,29 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CurrentUser } from 'src/auth/decorators/user.decorator';
 import { ValidRoles } from 'src/auth/enums/valid-roles.enum';
 import { ItemsService } from 'src/items/items.service';
+import { Item } from '../items/entities/item.entity';
+import { PaginationArgs, SearchArgs } from 'src/common/dto/args';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 @Resolver(() => User)
 @UseGuards(JwtAuthGuard)
 export class UsersResolver {
   constructor(
     private readonly usersService: UsersService,
-    private readonly itemsService : ItemsService
+    private readonly itemsService : ItemsService,
+
+
   ) {}
 
   @Query(() => [User], { name: 'users' })
   findAll(
     @Args() validRoles:ValidRolesArgs,
-    @CurrentUser([ValidRoles.admin, ValidRoles.superuser]) user:User
+    @CurrentUser([ValidRoles.admin, ValidRoles.superuser]) user:User,
+    @Args() paginationArgs:PaginationArgs,
+    @Args() searchArgs: SearchArgs,
   ) : Promise<User[]> {
-    return this.usersService.findAll(validRoles.roles);
+    return this.usersService.findAll(validRoles.roles,paginationArgs,searchArgs);
   }
 
   @Query(() => User, { name: 'user' })
@@ -59,5 +67,18 @@ export class UsersResolver {
     
 
     return await this.itemsService.itemCountByUser(user)
+  }
+
+
+  @ResolveField(() => [Item], {name:'items'})
+  async getItemsByUser(
+    @CurrentUser([ValidRoles.admin]) adminUser:User,
+    @Parent() user:User,
+    @Args() paginationArgs: PaginationArgs,
+    @Args() searchArgs: SearchArgs
+  ):Promise<Item[]>{
+    
+
+    return await this.itemsService.findAll(user,paginationArgs,searchArgs);
   }
 }

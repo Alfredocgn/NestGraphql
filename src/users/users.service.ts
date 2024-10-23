@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ValidRoles } from 'src/auth/enums/valid-roles.enum';
 import { UpdateUserInput } from './dto/update-user.input';
+import { PaginationArgs, SearchArgs } from 'src/common/dto/args';
 
 @Injectable()
 export class UsersService {
@@ -34,20 +35,37 @@ export class UsersService {
     }
   }
 
-  async findAll(roles: ValidRoles[]): Promise<User[]> {
+  async findAll(
+    roles: ValidRoles[],
+    paginationArgs:PaginationArgs,
+    searchArgs:SearchArgs)
+    : Promise<User[]> {
+      
+      const {limit,offset} = paginationArgs
+      const {search} = searchArgs
+      const queryBuilder = this.usersRepository.createQueryBuilder('user')
+      .take(limit)
+      .skip(offset)
 
-    if(roles.length === 0){
-      return this.usersRepository.find({
-        //No se necesita si se usa la propiedad lazy 
-        // relations:{
-        //   lastUpdateBy:true
-        // }
-      });
+      if(search){
+        queryBuilder.andWhere('LOWER(user.fullName) LIKE :fullName',{ fullName:`%${search.toLowerCase()}%`})
+      }
+    if(roles.length > 0){
+
+      queryBuilder.andWhere('ARRAY[roles] && ARRAY[:...roles]',{roles})
+
+      // return this.usersRepository.find({
+      //   //No se necesita si se usa la propiedad lazy 
+      //   // relations:{
+      //   //   lastUpdateBy:true
+      //   // }
+      // });
     }
-    return this.usersRepository.createQueryBuilder()
-    .andWhere('ARRAY[roles] && ARRAY[:...roles]')
-    .setParameter('roles',roles)
-    .getMany()
+    // return this.usersRepository.createQueryBuilder()
+    // .andWhere('ARRAY[roles] && ARRAY[:...roles]')
+    // .setParameter('roles',roles)
+    // .getMany()
+    return queryBuilder.getMany()
   }
 
   async findOneByEmail(email: string):Promise<User> {
