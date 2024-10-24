@@ -12,6 +12,8 @@ import { Item } from '../items/entities/item.entity';
 import { PaginationArgs, SearchArgs } from 'src/common/dto/args';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { List } from 'src/lists/entities/list.entity';
+import { ListsService } from 'src/lists/lists.service';
 
 @Resolver(() => User)
 @UseGuards(JwtAuthGuard)
@@ -19,6 +21,7 @@ export class UsersResolver {
   constructor(
     private readonly usersService: UsersService,
     private readonly itemsService : ItemsService,
+    private readonly listsService : ListsService
 
 
   ) {}
@@ -69,6 +72,14 @@ export class UsersResolver {
     return await this.itemsService.itemCountByUser(user)
   }
 
+  @ResolveField(() => Int,{name:'listCount'})
+  async listCount(
+    @CurrentUser([ValidRoles.admin]) adminUser:User,
+    @Parent()user:User
+  ):Promise<number>{
+    return await this.listsService.listCountByUser(user)
+  }
+
 
   @ResolveField(() => [Item], {name:'items'})
   async getItemsByUser(
@@ -80,5 +91,15 @@ export class UsersResolver {
     
 
     return await this.itemsService.findAll(user,paginationArgs,searchArgs);
+  }
+
+  @ResolveField(() => [List], {name:'lists'})
+  async getListsByUser(
+    @CurrentUser([ValidRoles.admin]) adminUser:User,
+    @Parent() user: User,
+    @Args() paginationArgs:PaginationArgs,
+    @Args() searchArgs: SearchArgs,
+  ): Promise<List[]>{
+    return await this.listsService.findAll(user,paginationArgs,searchArgs)
   }
 }
